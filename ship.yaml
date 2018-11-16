@@ -1,0 +1,87 @@
+assets:
+  v1:
+    - google_gke:
+        dest: tf/new_vpc.tf
+        credentials: '{{repl ConfigOption "credentials" | Base64Encode}}'
+        project: '{{repl ConfigOption "project" }}'
+        region: '{{repl ConfigOption "region" }}'
+        cluster_name: 'example-cluster'
+        zone: '{{repl ConfigOption "zone" }}'
+        initial_node_count: '{{repl ConfigOption "initial_node_count" }}'
+        machine_type: '{{repl ConfigOption "machine_type" }}'
+    - inline:
+        dest: k8s/deploy.yml
+        contents: |+
+          apiVersion: extensions/v1beta1
+          kind: Deployment
+          metadata:
+            name: api
+          spec:
+            replicas: 1
+            template:
+              metadata:
+                labels:
+                  app: retraced
+                  tier: api
+              spec:
+                volumes:
+                  - name: var-run
+                    hostPath:
+                      path: /var/run/retraced/
+                imagePullSecrets:
+                  - name: quayio
+                containers:
+                  - name: api
+                    image: quay.io/retracedhq/api:{{ tag }}
+                    ports:
+                      - containerPort: 3000
+
+config:
+  v1:
+    - name: gke-cluster
+      title: GCP Settings
+      description: Project and credentials
+      items:
+      - name: credentials
+        title: Credentials
+        type: textarea
+        value: |-
+          {
+            "type": "service_account",
+            "project_id": "my-project",
+            ...
+          }
+      - name: project
+        title: Project
+        type: text
+        value: "replicated-qa"
+      - name: region
+        title: Region
+        type: text
+        value: "us-east"
+      - name: zone
+        title: Zone
+        type: text
+        value: us-east1-b
+      - name: initial_node_count
+        title: Initial Node Count
+        type: text
+        value: "1"
+      - name: machine_type
+        title: Machine Type
+        type: text
+        value: "n1-standard-1"
+
+lifecycle:
+  v1:
+    - message:
+       contents: "creating a gke cluster"
+    - config: {}
+    - render: {}
+    - terraform:
+        path: tf/
+    - kubectlApply:
+        path: k8s/deploy.yml
+        kubeconfig: '{{repl GoogleGKE "example-cluster"}}'
+    - message:
+       contents: "all done"
