@@ -84,4 +84,4 @@ lifecycle:
         path: k8s/deploy.yml
         kubeconfig: '{{repl GoogleGKE "example-cluster"}}'
     - message:
-       contents: "all done"
+       contents: "all done..."
